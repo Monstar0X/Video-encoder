@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  video-editor-bot:
+    build: .
+    container_name: telegram-video-editor-bot
+    restart: unless-stopped
+    environment:
+      # Load environment variables from .env file
+      - API_ID=${API_ID}
+      - API_HASH=${API_HASH}
+      - BOT_TOKEN=${BOT_TOKEN}
+      - MONGO_URI=${MONGO_URI:-mongodb://mongo:27017/video_editor_bot}
+      - LOG_CHANNEL=${LOG_CHANNEL}
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-2147483648}
+      - PROCESSING_TIMEOUT=${PROCESSING_TIMEOUT:-300}
+      - DEBUG=${DEBUG:-false}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      # Mount logs directory for persistence
+      - ./logs:/app/logs
+      # Mount temp directory for temporary files
+      - ./temp:/app/temp
+    networks:
+      - bot-network
+    depends_on:
+      - mongo
+    # Resource limits for stability
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  # Optional: MongoDB for future features
+  mongo:
+    image: mongo:6.0
+    container_name: video-editor-mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-password}
+      MONGO_INITDB_DATABASE: ${MONGO_DATABASE:-video_editor_bot}
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - bot-network
+    ports:
+      - "27017:27017"  # Only expose if needed for external access
+
+networks:
+  bot-network:
+    driver: bridge
+
+volumes:
+  mongo_data:
+    driver: local
